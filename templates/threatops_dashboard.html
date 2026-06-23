@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THREATOPS — Global Threat Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg:        #010409;
+    --bg2:       #0a0e1a;
+    --bg3:       #0d1117;
+    --panel:     rgba(5,10,25,0.85);
+    --border:    rgba(0,200,255,0.15);
+    --border2:   rgba(0,200,255,0.35);
+    --cyan:      #00c8ff;
+    --cyan-dim:  rgba(0,200,255,0.4);
+    --red:       #ff2244;
+    --red-dim:   rgba(255,34,68,0.5);
+    --orange:    #ff6600;
+    --green:     #00ff88;
+    --yellow:    #ffd700;
+    --text:      #c8d8e8;
+    --text-dim:  #4a6080;
+    --glow:      0 0 20px rgba(0,200,255,0.4);
+    --glow-red:  0 0 20px rgba(255,34,68,0.6);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 52px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border2);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--cyan);
+    text-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,200,255,0.3);
+  }
+  .logo span { color: var(--red); }
+  .topbar-center {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .topbar-center .live-time {
+    color: var(--cyan);
+    font-size: 13px;
+    display: block;
+  }
+  .status-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 10px var(--green);
+    animation: pulse-green 2s infinite;
+  }
+  @keyframes pulse-green {
+    0%,100% { opacity: 1; box-shadow: 0 0 10px var(--green); }
+    50% { opacity: 0.4; box-shadow: 0 0 4px var(--green); }
+  }
+  .status-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+  .threat-level-badge {
+    background: linear-gradient(135deg, rgba(255,34,68,0.2), rgba(255,100,0,0.1));
+    border: 1px solid var(--red);
+    border-radius: 3px;
+    padding: 3px 10px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--red);
+    animation: blink-border 3s infinite;
+  }
+  .threat-level-badge.low { border-color: var(--green); color: var(--green); text-shadow: 0 0 10px var(--green); }
+  .threat-level-badge.medium { border-color: var(--yellow); color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
+  .threat-level-badge.high { border-color: var(--orange); color: var(--orange); text-shadow: 0 0 10px var(--orange); }
+  @keyframes blink-border {
+    0%,100% { border-color: var(--red); }
+    50% { border-color: rgba(255,34,68,0.3); }
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .panel {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .panel:last-child {
+    border-right: none;
+    border-left: 1px solid var(--border);
+  }
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .card {
+    background: rgba(0,200,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--cyan);
+    opacity: 0.6;
+  }
+  .card.red::before { background: var(--red); }
+  .card.orange::before { background: var(--orange); }
+  .card.green::before { background: var(--green); }
+
+  .card-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .card-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cyan);
+    text-shadow: 0 0 20px var(--cyan-dim);
+  }
+  .card-value.red { color: var(--red); text-shadow: 0 0 20px var(--red-dim); }
+  .card-value.orange { color: var(--orange); }
+  .card-value.green { color: var(--green); }
+  .card-delta {
+    font-size: 11px;
+    color: var(--red);
+    margin-top: 2px;
+  }
+  .card-delta.up { color: var(--red); }
+  .card-delta.down { color: var(--green); }
+
+  .sparkline { width: 100%; height: 30px; margin-top: 6px; }
+
+  .feed-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(0,200,255,0.06);
+    animation: slide-in 0.3s ease;
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .feed-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  .feed-dot.login { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .feed-dot.command { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .feed-text { flex: 1; min-width: 0; }
+  .feed-route {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .feed-route .src { color: var(--red); }
+  .feed-route .arrow { color: var(--text-dim); }
+  .feed-route .dst { color: var(--cyan); }
+  .feed-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 1px;
+    font-family: 'Share Tech Mono', monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .mini-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .mini-bar-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text-dim); width: 80px; flex-shrink: 0; }
+  .mini-bar-track { flex: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
+  .mini-bar-fill  { height: 100%; border-radius: 2px; transition: width 1s ease; }
+  .mini-bar-val   { font-family: 'Orbitron', monospace; font-size: 10px; color: var(--text); width: 36px; text-align: right; }
+
+  .geo-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(0,200,255,0.05);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .geo-row:hover { background: rgba(0,200,255,0.05); }
+  .geo-flag { font-size: 16px; width: 22px; }
+  .geo-country { flex: 1; font-size: 12px; font-weight: 600; }
+  .geo-count {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+  }
+  .geo-bar { width: 60px; height: 3px; background: rgba(0,200,255,0.1); border-radius: 2px; overflow: hidden; }
+  .geo-bar-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--red)); border-radius: 2px; }
+
+  .globe-area {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(ellipse at 50% 50%, #010d1f 0%, var(--bg) 100%);
+    overflow: hidden;
+  }
+  .globe-area canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  #globeContainer3 {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: calc(100% - 44px);
+    z-index: 1;
+  }
+  .globe-stats-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: rgba(1,4,9,0.9);
+    z-index: 5;
+  }
+  .globe-stat {
+    flex: 1;
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .globe-stat:last-child { border-right: none; }
+  .globe-stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .globe-stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+  .globe-stat-val.red { color: var(--red); }
+  .globe-stat-val.orange { color: var(--orange); }
+  .globe-stat-val.green { color: var(--green); }
+
+  .corner-bracket {
+    position: absolute;
+    width: 20px; height: 20px;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .corner-bracket.tl { top:8px; left:8px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+  .corner-bracket.tr { top:8px; right:8px; border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+  .corner-bracket.bl { bottom:44px; left:8px; border-bottom: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+  .corner-bracket.br { bottom:44px; right:8px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+
+  .ticker {
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 320px;
+    text-align: center;
+  }
+  .ticker-inner {
+    display: inline-block;
+    animation: ticker-scroll 18s linear infinite;
+  }
+  @keyframes ticker-scroll {
+    0%   { transform: translateX(320px); }
+    100% { transform: translateX(-100%); }
+  }
+
+  .alert-item {
+    background: rgba(255,34,68,0.05);
+    border: 1px solid rgba(255,34,68,0.2);
+    border-radius: 3px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+  .alert-item.warn {
+    background: rgba(255,102,0,0.05);
+    border-color: rgba(255,102,0,0.2);
+  }
+  .alert-item.info {
+    background: rgba(0,200,255,0.03);
+    border-color: rgba(0,200,255,0.15);
+  }
+  .alert-head {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+  .alert-item.warn .alert-head { color: var(--orange); }
+  .alert-item.info .alert-head { color: var(--cyan); }
+  .alert-body { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .empty-state {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--cyan);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 4px 12px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover {
+    background: rgba(0,200,255,0.1);
+    box-shadow: 0 0 15px var(--cyan-dim);
+  }
+
+  .stats-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(1,4,9,0.93);
+    z-index: 2000;
+    display: none;
+    backdrop-filter: blur(6px);
+  }
+  .stats-overlay.open { display: block; }
+  .stats-panel {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    max-width: 960px;
+    max-height: 82vh;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    padding: 28px 32px;
+    overflow-y: auto;
+  }
+  .stats-panel::-webkit-scrollbar { width: 4px; }
+  .stats-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .stats-close {
+    position: absolute;
+    top: 12px; right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 22px;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    line-height: 1;
+  }
+  .stats-close:hover { color: var(--red); }
+  .stats-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 15px;
+    letter-spacing: 4px;
+    color: var(--cyan);
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px var(--cyan-dim);
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .stats-section {
+    border: 1px solid var(--border);
+    padding: 14px;
+    background: rgba(0,200,255,0.02);
+  }
+  .stats-section-full {
+    border: 1px solid var(--border);
+    padding: 14px;
+    background: rgba(0,200,255,0.02);
+    grid-column: 1 / -1;
+  }
+  .stats-section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .stats-table { width: 100%; border-collapse: collapse; }
+  .stats-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+  .stats-table td {
+    font-size: 11px;
+    padding: 5px 6px;
+    border-bottom: 1px solid rgba(0,200,255,0.04);
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .stats-table tr:hover td { background: rgba(0,200,255,0.03); }
+  .stats-flag { font-size: 14px; }
+  .stats-rank { color: var(--text-dim); width: 20px; }
+  .stats-count { color: var(--cyan); font-family: 'Orbitron', monospace; text-align: right; }
+  .stats-count.red { color: var(--red); }
+  .stats-ip { color: var(--orange); font-size: 10px; }
+  .stats-cmd { color: var(--yellow); font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+  .stats-username { color: var(--red); font-weight: 600; }
+  .stats-bar-td { width: 80px; }
+  .stats-bar {
+    height: 3px;
+    background: rgba(0,200,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .stats-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--red));
+    border-radius: 2px;
+  }
+  .stats-summary-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .stats-summary-item {
+    flex: 1;
+    min-width: 100px;
+    background: rgba(0,200,255,0.03);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: center;
+  }
+  .stats-summary-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .stats-summary-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+  .stats-summary-value.red { color: var(--red); }
+  .stats-summary-value.orange { color: var(--orange); }
+  .stats-summary-value.green { color: var(--green); }
+
+  /* ── ATTACK INTENSITY METER ── */
+  .attack-meter-wrap {
+    position: absolute;
+    top: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(1,4,9,0.7);
+    border: 1px solid var(--border);
+    padding: 5px 14px;
+    border-radius: 3px;
+  }
+  .attack-meter-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+  .attack-meter-track {
+    width: 120px;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  .attack-meter-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 1s ease, background 0.5s ease;
+    background: var(--green);
+  }
+  .attack-meter-fill.low { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .attack-meter-fill.medium { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+  .attack-meter-fill.high { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  .attack-meter-fill.critical { background: var(--red); box-shadow: 0 0 12px var(--red); animation: meter-pulse 0.8s ease infinite alternate; }
+  @keyframes meter-pulse {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+  }
+  .attack-meter-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* ── SERVICE STATUS ── */
+  .service-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+  }
+  .service-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .service-dot.up { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .service-dot.down { background: var(--red); box-shadow: 0 0 8px var(--red); animation: pulse-green 1.5s infinite; }
+  .service-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    flex: 1;
+  }
+  .service-port {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .service-count {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">THREAT<span>OPS</span></div>
+  <div class="topbar-center">
+    <span class="live-time" id="liveClock">--:--:-- UTC</span>
+    HONEYPOT GLOBAL THREAT INTELLIGENCE
+  </div>
+  <div class="status-row">
+    <div class="status-dot"></div>
+    <span class="status-label">LIVE FEED ACTIVE</span>
+    <div class="threat-level-badge" id="threatBadge">THREAT LVL: --</div>
+    <button class="nav-btn" onclick="toggleStats()">📊 STATISTICS</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="panel">
+    <div class="panel-title">// Threat Overview</div>
+
+    <div class="card red">
+      <div class="card-label">TOTAL EVENTS</div>
+      <div class="card-value red" id="totalEvents">0</div>
+      <div class="card-delta up" id="eventsDelta">↑ from database</div>
+      <canvas class="sparkline" id="sparkAtk"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-label">UNIQUE IPS</div>
+      <div class="card-value" id="uniqueIPs">0</div>
+      <div class="card-delta" id="uniqueIPsDelta" style="color:var(--text-dim)">attacking sources</div>
+      <canvas class="sparkline" id="sparkBlock"></canvas>
+    </div>
+
+    <div class="card orange">
+      <div class="card-label">ACTIVE SESSIONS</div>
+      <div class="card-value orange" id="activeSessions">0</div>
+      <div class="card-delta" id="sessionsDelta" style="color:var(--text-dim)">monitored sessions</div>
+    </div>
+
+    <div class="card green">
+      <div class="card-label">TODAY'S EVENTS</div>
+      <div class="card-value green" id="todayEvents">0</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">SERVICES</div>
+      <div id="serviceMonitor">
+        <div class="service-row">
+          <div class="service-dot down"></div>
+          <span class="service-name">SSH</span>
+          <span class="service-port">:2223</span>
+          <span class="service-count" id="svcSshCount">0</span>
+        </div>
+        <div class="service-row">
+          <div class="service-dot down"></div>
+          <span class="service-name">HTTP</span>
+          <span class="service-port">:80</span>
+          <span class="service-count" id="svcHttpCount">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-title" style="margin-top:4px">// Attack Types</div>
+    <div id="attackVectors">
+      <div class="empty-state">Loading attack vector data...</div>
+    </div>
+  </div>
+
+  <div class="globe-area" id="globeArea">
+    <div class="corner-bracket tl"></div>
+    <div class="corner-bracket tr"></div>
+    <div class="corner-bracket bl"></div>
+    <div class="corner-bracket br"></div>
+    <div class="ticker"><span class="ticker-inner" id="tickerText">⚠ Loading threat intelligence data...</span></div>
+    <div class="attack-meter-wrap">
+      <span class="attack-meter-label">ATTACK INTENSITY</span>
+      <div class="attack-meter-track">
+        <div class="attack-meter-fill low" id="attackMeterFill"></div>
+      </div>
+      <span class="attack-meter-val" id="attackMeterVal">0.0/s</span>
+    </div>
+    <div id="globeContainer3"></div>
+    <div class="globe-stats-bar">
+      <div class="globe-stat">
+        <span class="globe-stat-label">TOTAL EVENTS</span>
+        <span class="globe-stat-val red" id="statTotal">0</span>
+      </div>
+      <div class="globe-stat">
+        <span class="globe-stat-label">UNIQUE IPs</span>
+        <span class="globe-stat-val" id="statIPs">0</span>
+      </div>
+      <div class="globe-stat">
+        <span class="globe-stat-label">COUNTRIES</span>
+        <span class="globe-stat-val orange" id="statCountries">0</span>
+      </div>
+      <div class="globe-stat">
+        <span class="globe-stat-label">LOGINS</span>
+        <span class="globe-stat-val" id="statLogins">0</span>
+      </div>
+      <div class="globe-stat">
+        <span class="globe-stat-label">COMMANDS</span>
+        <span class="globe-stat-val red" id="statCommands">0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">// Live Feed</div>
+    <div id="attackFeed">
+      <div class="empty-state">Waiting for attack data...</div>
+    </div>
+
+    <div class="panel-title" style="margin-top:4px">// Top Countries</div>
+    <div id="geoList">
+      <div class="empty-state">Loading geodata...</div>
+    </div>
+
+    <div class="panel-title" style="margin-top:4px">// Alerts</div>
+    <div id="alertsContainer">
+      <div class="alert-item info">
+        <div class="alert-head">ℹ SYSTEM MONITORING</div>
+        <div class="alert-body">Honeypot network active. Waiting for threat data.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api';
+let globe = null;
+let prevAttackIds = new Set();
+const COUNTRY_FLAGS = {
+  'AF':'🇦🇫','AL':'🇦🇱','DZ':'🇩🇿','AD':'🇦🇩','AO':'🇦🇴','AR':'🇦🇷','AM':'🇦🇲','AU':'🇦🇺',
+  'AT':'🇦🇹','AZ':'🇦🇿','BH':'🇧🇭','BD':'🇧🇩','BY':'🇧🇾','BE':'🇧🇪','BZ':'🇧🇿','BJ':'🇧🇯',
+  'BO':'🇧🇴','BA':'🇧🇦','BW':'🇧🇼','BR':'🇧🇷','BN':'🇧🇳','BG':'🇧🇬','BF':'🇧🇫','BI':'🇧🇮',
+  'KH':'🇰🇭','CM':'🇨🇲','CA':'🇨🇦','CV':'🇨🇻','CF':'🇨🇫','TD':'🇹🇩','CL':'🇨🇱','CN':'🇨🇳',
+  'CO':'🇨🇴','KM':'🇰🇲','CG':'🇨🇬','CD':'🇨🇩','CR':'🇨🇷','CI':'🇨🇮','HR':'🇭🇷','CU':'🇨🇺',
+  'CY':'🇨🇾','CZ':'🇨🇿','DK':'🇩🇰','DJ':'🇩🇯','TP':'🇹🇱','EC':'🇪🇨','EG':'🇪🇬','SV':'🇸🇻',
+  'GQ':'🇬🇶','ER':'🇪🇷','EE':'🇪🇪','SZ':'🇸🇿','ET':'🇪🇹','FJ':'🇫🇯','FI':'🇫🇮','FR':'🇫🇷',
+  'GA':'🇬🇦','GM':'🇬🇲','GE':'🇬🇪','DE':'🇩🇪','GH':'🇬🇭','GR':'🇬🇷','GT':'🇬🇹','GN':'🇬🇳',
+  'GW':'🇬🇼','GY':'🇬🇾','HT':'🇭🇹','HN':'🇭🇳','HK':'🇭🇰','HU':'🇭🇺','IS':'🇮🇸','IN':'🇮🇳',
+  'ID':'🇮🇩','IR':'🇮🇷','IQ':'🇮🇶','IE':'🇮🇪','IL':'🇮🇱','IT':'🇮🇹','JM':'🇯🇲','JP':'🇯🇵',
+  'JO':'🇯🇴','KZ':'🇰🇿','KE':'🇰🇪','KP':'🇰🇵','KR':'🇰🇷','KW':'🇰🇼','KG':'🇰🇬','LA':'🇱🇦',
+  'LV':'🇱🇻','LB':'🇱🇧','LS':'🇱🇸','LR':'🇱🇷','LY':'🇱🇾','LI':'🇱🇮','LT':'🇱🇹','LU':'🇱🇺',
+  'MO':'🇲🇴','MK':'🇲🇰','MG':'🇲🇬','MW':'🇲🇼','MY':'🇲🇾','MV':'🇲🇻','ML':'🇲🇱','MT':'🇲🇹',
+  'MR':'🇲🇷','MU':'🇲🇺','MX':'🇲🇽','MD':'🇲🇩','MC':'🇲🇨','MN':'🇲🇳','ME':'🇲🇪','MA':'🇲🇦',
+  'MZ':'🇲🇿','MM':'🇲🇲','NA':'🇳🇦','NP':'🇳🇵','NL':'🇳🇱','NZ':'🇳🇿','NI':'🇳🇮','NE':'🇳🇪',
+  'NG':'🇳🇬','NO':'🇳🇴','OM':'🇴🇲','PK':'🇵🇰','PS':'🇵🇸','PA':'🇵🇦','PG':'🇵🇬','PY':'🇵🇾',
+  'PE':'🇵🇪','PH':'🇵🇭','PL':'🇵🇱','PT':'🇵🇹','PR':'🇵🇷','QA':'🇶🇦','RO':'🇷🇴','RU':'🇷🇺',
+  'RW':'🇷🇼','SA':'🇸🇦','SN':'🇸🇳','RS':'🇷🇸','SL':'🇸🇱','SG':'🇸🇬','SK':'🇸🇰','SI':'🇸🇮',
+  'SO':'🇸🇴','ZA':'🇿🇦','SS':'🇸🇸','ES':'🇪🇸','LK':'🇱🇰','SD':'🇸🇩','SR':'🇸🇷','SE':'🇸🇪',
+  'CH':'🇨🇭','SY':'🇸🇾','TW':'🇹🇼','TJ':'🇹🇯','TZ':'🇹🇿','TH':'🇹🇭','TG':'🇹🇬','TT':'🇹🇹',
+  'TN':'🇹🇳','TR':'🇹🇷','TM':'🇹🇲','UG':'🇺🇬','UA':'🇺🇦','AE':'🇦🇪','GB':'🇬🇧','US':'🇺🇸',
+  'UY':'🇺🇾','UZ':'🇺🇿','VA':'🇻🇦','VE':'🇻🇪','VN':'🇻🇳','YE':'🇾🇪','ZM':'🇿🇲','ZW':'🇿🇼',
+  'XX':'🌐'
+};
+
+
+
+function $(id) { return document.getElementById(id); }
+
+function flagEmoji(code) {
+  if (!code || code.length !== 2) return COUNTRY_FLAGS[code] || COUNTRY_FLAGS['XX'] || '🌐';
+  const cp = [...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65);
+  return String.fromCodePoint(...cp);
+}
+
+function ago(ts) {
+  const s = Math.floor((new Date() - new Date(ts)) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function updateClock() {
+  const now = new Date();
+  $('liveClock').textContent = now.toUTCString().split(' ').slice(4,5)[0] + ' UTC';
+  setTimeout(updateClock, 1000);
+}
+updateClock();
+
+// ── SPARKLINES ──
+function drawSparkline(canvas, data, color) {
+  if (!canvas || !data.length) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.offsetWidth * devicePixelRatio;
+  const H = canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v,i) => [i/(data.length-1)*W, H - ((v-min)/range)*(H*0.85) - H*0.05]);
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, color + '88');
+  grad.addColorStop(1, color + '00');
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], H);
+  pts.forEach(([x,y]) => ctx.lineTo(x,y));
+  ctx.lineTo(pts[pts.length-1][0], H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.beginPath();
+  pts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5 * devicePixelRatio;
+  ctx.stroke();
+}
+
+let sparkData1 = [];
+let sparkData2 = [];
+
+function updateSparklines(timelineData) {
+  if (timelineData && timelineData.data && timelineData.data.length > 0) {
+    const vals = timelineData.data.map(v => v || 0);
+    sparkData1 = vals.slice(-30);
+    sparkData2 = vals.slice(-30).map(v => Math.max(1, v || 0));
+    while (sparkData1.length < 30) sparkData1 = [0, ...sparkData1];
+    while (sparkData2.length < 30) sparkData2 = [0, ...sparkData2];
+    drawSparkline($('sparkAtk'), sparkData1, '#ff2244');
+    drawSparkline($('sparkBlock'), sparkData2, '#00c8ff');
+  }
+}
+
+async function loadTimeline() {
+  try {
+    const res = await fetch(`${API}/dashboard/timeline`);
+    const data = await res.json();
+    updateSparklines(data);
+  } catch (_) {}
+}
+setInterval(loadTimeline, 6000);
+loadTimeline();
+
+// ── ANIMATED ARCS + COLLISION RINGS (using globe.gl built-in API) ──
+let arcRefreshTimer = null;
+const ARC_COLORS = ['#00e5ff', '#ff1744', '#ffd700', '#00ff88', '#ff6600', '#aa66ff'];
+
+function generateArcsAndRings(count) {
+  const arcs = [];
+  const rings = [];
+  for (let i = 0; i < count; i++) {
+    const endLat = Math.random() * 180 - 90;
+    const endLng = Math.random() * 360 - 180;
+    const color = ARC_COLORS[Math.floor(Math.random() * ARC_COLORS.length)];
+    arcs.push({
+      startLat: Math.random() * 180 - 90,
+      startLng: Math.random() * 360 - 180,
+      endLat, endLng, color
+    });
+    rings.push(
+      { lat: endLat, lng: endLng, color: '#ffffff', maxR: 0.5, propagationSpeed: 10, repeatPeriod: 2500 },
+      { lat: endLat, lng: endLng, color, maxR: Math.random() * 1.5 + 2, propagationSpeed: Math.random() * 2 + 4, repeatPeriod: 2000 },
+      { lat: endLat, lng: endLng, color, maxR: Math.random() * 2 + 5, propagationSpeed: Math.random() * 1 + 1.5, repeatPeriod: 1500 }
+    );
+  }
+  if (globe) {
+    globe.arcsData(arcs);
+    globe.ringsData(rings);
+  }
+}
+
+function startArcs() {
+  if (arcRefreshTimer) clearInterval(arcRefreshTimer);
+  generateArcsAndRings(45);
+  arcRefreshTimer = setInterval(() => {
+    if (globe) generateArcsAndRings(45);
+  }, 5000);
+}
+
+// ── GLOBE INIT ──
+function initGlobe() {
+  globe = Globe()
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+    .backgroundColor('#010409')
+    .atmosphereColor('#00bcd4')
+    .atmosphereAltitude(0.25)
+    .arcsData([])
+    .arcColor(d => d.color)
+    .arcAltitude(() => 0.3)
+    .arcDashLength(() => 0.08)
+    .arcDashGap(() => 0.06)
+    .arcDashAnimateTime(() => 2000)
+    .arcStroke(() => 0.15)
+    .ringsData([])
+    .ringLat(d => d.lat)
+    .ringLng(d => d.lng)
+    .ringColor(d => d.color)
+    .ringMaxRadius(d => d.maxR)
+    .ringPropagationSpeed(d => d.propagationSpeed)
+    .ringRepeatPeriod(d => d.repeatPeriod)
+    .pointLabel(d => d.label)
+    .pointColor(d => d.color)
+    .pointAltitude(() => 0.01)
+    .pointRadius(() => 0.35)
+    .pointsMerge(true)
+    .labelsData([])
+    .labelLat(d => d.lat)
+    .labelLng(d => d.lng)
+    .labelText(d => d.text)
+    .labelColor(() => 'rgba(255,255,255,0.55)')
+    .labelSize(d => d.size)
+    .labelAltitude(0.02)
+    ($('globeContainer3'));
+
+  const renderer = globe.renderer();
+  if (renderer) renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
+  globe.camera().position.z = 260;
+  globe.controls().autoRotate = true;
+  globe.controls().autoRotateSpeed = 0.4;
+  globe.controls().enableZoom = true;
+  globe.controls().enableDamping = true;
+  globe.controls().dampingFactor = 0.05;
+  globe.controls().minDistance = 80;
+  globe.controls().maxDistance = 400;
+
+  setTimeout(() => {
+    startArcs();
+    loadAttackLocations();
+    setInterval(loadAttackLocations, 5000);
+  }, 2000);
+  setInterval(loadLiveFeed, 3000);
+  setInterval(loadAllStats, 4000);
+}
+
+// ── ATTACK INTENSITY METER ──
+async function loadAttackMeter() {
+  try {
+    const res = await fetch(`${API}/dashboard/threat-level`);
+    const d = await res.json();
+    const epm = d.events_per_minute || 0;
+    const fill = $('attackMeterFill');
+    const val = $('attackMeterVal');
+    const pct = Math.min(epm / 15 * 100, 100);
+    fill.style.width = pct + '%';
+    fill.className = 'attack-meter-fill ' + (d.level || 'low').toLowerCase();
+    val.textContent = epm.toFixed(1) + '/s';
+  } catch (_) {}
+}
+
+// ── SERVICE MONITORING ──
+async function loadServiceStatus() {
+  try {
+    const [statsRes, eventsRes] = await Promise.all([
+      fetch(`${API}/dashboard/stats`),
+      fetch(`${API}/dashboard/recent-events?limit=100`)
+    ]);
+    const stats = await statsRes.json();
+    const events = await eventsRes.json();
+    const sshCount = events.filter(e => e.event_type === 'login').length;
+    const httpCount = events.filter(e => e.event_type === 'command').length;
+    $('svcSshCount').textContent = sshCount;
+    $('svcHttpCount').textContent = httpCount;
+    const sshDot = document.querySelector('#serviceMonitor .service-row:nth-child(1) .service-dot');
+    const httpDot = document.querySelector('#serviceMonitor .service-row:nth-child(2) .service-dot');
+    sshDot.className = 'service-dot ' + (stats.total_events > 0 ? 'up' : 'down');
+    httpDot.className = 'service-dot ' + (stats.unique_ips > 0 ? 'up' : 'down');
+  } catch (_) {}
+}
+
+// ── THREAT LEVEL ──
+async function loadThreatLevel() {
+  try {
+    const res = await fetch(`${API}/dashboard/threat-level`);
+    const d = await res.json();
+    const badge = $('threatBadge');
+    badge.textContent = `THREAT LVL: ${d.level}`;
+    badge.className = 'threat-level-badge ' + d.level.toLowerCase();
+  } catch (_) {}
+}
+
+// ── ATTACK LOCATIONS ──
+async function loadAttackLocations() {
+  try {
+    const res = await fetch(`${API}/dashboard/attack-locations`);
+    const data = await res.json();
+    if (!globe) return;
+    const points = data.filter(a => a.lat != null && a.lon != null).map(a => ({
+      lat: a.lat, lng: a.lon,
+      size: Math.min(a.count * 3, 20) + 2,
+      color: a.color || '#ff1744',
+      label: `${flagEmoji(a.country_code)} ${a.country} (${a.count})`
+    }));
+    globe.pointsData(points);
+  } catch (_) {}
+}
+
+// ── LIVE FEED ──
+async function loadLiveFeed() {
+  try {
+    const res = await fetch(`${API}/dashboard/live-attacks?limit=30`);
+    const data = await res.json();
+    if (!data.length) {
+      $('attackFeed').innerHTML = '<div class="empty-state">Waiting for attack data...</div>';
+      return;
+    }
+    prevAttackIds = new Set(data.map(a => a.id));
+    $('attackFeed').innerHTML = data.slice(0, 50).map(a => {
+      const et = a.event_type || 'unknown';
+      return `<div class="feed-item">
+        <div class="feed-dot ${et}"></div>
+        <div class="feed-text">
+          <div class="feed-route">
+            <span class="src">${flagEmoji(a.country_code)} ${a.country}</span>
+            <span class="arrow"> ──▶ </span>
+            <span class="dst">${a.city}</span>
+          </div>
+          <div class="feed-meta">${a.ip} &nbsp;|&nbsp; ${et.toUpperCase()}${a.username ? ': ' + a.username : ''}${a.command ? ': ' + a.command.substring(0, 40) : ''} &nbsp;|&nbsp; ${ago(a.timestamp)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (_) {}
+}
+
+// ── COUNTRY STATS ──
+async function loadCountryStats() {
+  try {
+    const res = await fetch(`${API}/dashboard/country-stats`);
+    const d = await res.json();
+    if (!d.countries || !d.countries.length) {
+      $('geoList').innerHTML = '<div class="empty-state">No country data available</div>';
+      return;
+    }
+    const items = d.countries.map((name, i) => ({
+      name,
+      code: (d.country_codes && d.country_codes[i]) || '',
+      logins: d.login_attacks[i] || 0,
+      commands: d.command_attacks[i] || 0,
+      total: (d.login_attacks[i] || 0) + (d.command_attacks[i] || 0),
+    }));
+    const maxTotal = Math.max(...items.map(c => c.total), 1);
+    $('geoList').innerHTML = items.map(c => `
+      <div class="geo-row">
+        <span class="geo-flag">${flagEmoji(c.code)}</span>
+        <span class="geo-country">${c.name}</span>
+        <div class="geo-bar"><div class="geo-bar-fill" style="width:${(c.total/maxTotal*100).toFixed(0)}%"></div></div>
+        <span class="geo-count">${c.total}</span>
+      </div>
+    `).join('');
+  } catch (_) {}
+}
+
+// ── ATTACK VECTORS ──
+async function loadEventTypes() {
+  try {
+    const res = await fetch(`${API}/dashboard/event-types`);
+    const d = await res.json();
+    if (!d.labels || !d.labels.length) {
+      $('attackVectors').innerHTML = '<div class="empty-state">No event type data</div>';
+      return;
+    }
+    const total = d.data.reduce((a,b) => a+b, 1);
+    const colors = {'login':'linear-gradient(90deg,var(--red),var(--orange))','command':'linear-gradient(90deg,var(--cyan),#0066ff)'};
+    $('attackVectors').innerHTML = d.labels.map((label, i) => {
+      const pct = ((d.data[i] / total) * 100).toFixed(0);
+      const col = colors[label] || 'linear-gradient(90deg,var(--cyan),var(--red))';
+      return `<div class="mini-bar-row">
+        <span class="mini-bar-label">${label.toUpperCase()}</span>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+        <span class="mini-bar-val">${pct}%</span>
+      </div>`;
+    }).join('');
+  } catch (_) {}
+}
+
+// ── OVERALL STATS ──
+async function loadAllStats() {
+  try {
+    const res = await fetch(`${API}/dashboard/stats`);
+    const s = await res.json();
+    $('totalEvents').textContent = (s.total_events || 0).toLocaleString();
+    $('uniqueIPs').textContent = (s.unique_ips || 0).toLocaleString();
+    $('activeSessions').textContent = (s.active_sessions || 0).toLocaleString();
+    $('todayEvents').textContent = (s.today_events || 0).toLocaleString();
+    $('statTotal').textContent = (s.total_events || 0).toLocaleString();
+    $('statIPs').textContent = (s.unique_ips || 0).toLocaleString();
+    $('statCountries').textContent = (s.unique_countries || 0).toLocaleString();
+    $('statLogins').textContent = (s.login_attempts || 0).toLocaleString();
+    $('statCommands').textContent = (s.commands_executed || 0).toLocaleString();
+    $('eventsDelta').textContent = `↑ ${s.today_events || 0} today`;
+  } catch (_) {}
+  loadThreatLevel();
+  loadEventTypes();
+  loadCountryStats();
+}
+
+// ── TICKER ──
+async function loadTicker() {
+  try {
+    const res = await fetch(`${API}/dashboard/recent-events?limit=5`);
+    const data = await res.json();
+    if (data.length) {
+      const items = data.map(e => `⚠ ${e.event_type.toUpperCase()} from ${e.country} — ${e.ip}`).join(' &nbsp;|&nbsp; ');
+      $('tickerText').innerHTML = items;
+    }
+  } catch (_) {}
+}
+
+// ── ALERTS ──
+async function loadAlerts() {
+  try {
+    const [statsRes, threatRes, recentRes] = await Promise.all([
+      fetch(`${API}/dashboard/stats`),
+      fetch(`${API}/dashboard/threat-level`),
+      fetch(`${API}/dashboard/recent-events?limit=50`)
+    ]);
+    const stats = await statsRes.json();
+    const threat = await threatRes.json();
+    const recent = await recentRes.json();
+    const alerts = [];
+
+    const logins = recent.filter(e => e.event_type === 'login');
+    const cmds = recent.filter(e => e.event_type === 'command');
+
+    if (logins.length >= 5 && threat.level === 'CRITICAL') {
+      const topIps = [...new Set(logins.map(e => e.ip))].slice(0, 5);
+      const topUsers = [...new Set(logins.map(e => e.username).filter(Boolean))].slice(0, 5);
+      const topPass = [...new Set(logins.map(e => e.password).filter(Boolean))].slice(0, 5);
+      alerts.push(`<div class="alert-item"><div class="alert-head">🔴 CRITICAL — SSH ATTACK WAVE</div><div class="alert-body">${logins.length} SSH logins in recent window.<br>IPs: ${topIps.join(', ')}<br>Users: ${topUsers.join(', ') || '—'}<br>Passwords: ${topPass.join(', ') || '—'}</div></div>`);
+    }
+
+    if (threat.level === 'CRITICAL' || threat.level === 'HIGH') {
+      alerts.push(`<div class="alert-item"><div class="alert-head">🔴 ${threat.level} — THREAT LEVEL</div><div class="alert-body">${threat.events_per_minute.toFixed(2)} events/min detected. ${stats.unique_ips} unique IPs active.</div></div>`);
+    }
+    if (logins.length > 0) {
+      alerts.push(`<div class="alert-item warn"><div class="alert-head">🟠 SSH LOGIN ATTACKS</div><div class="alert-body">${stats.login_attempts} total login attempts. ${logins.length} recent.</div></div>`);
+    }
+    if (cmds.length > 0) {
+      alerts.push(`<div class="alert-item warn"><div class="alert-head">🟠 COMMAND EXECUTION</div><div class="alert-body">${stats.commands_executed} total commands executed. ${cmds.length} recent.</div></div>`);
+    }
+    if (stats.active_sessions > 0) {
+      alerts.push(`<div class="alert-item info"><div class="alert-head">ℹ ACTIVE SESSIONS</div><div class="alert-body">${stats.active_sessions} active honeypot sessions being monitored.</div></div>`);
+    }
+    if (stats.unique_countries > 0) {
+      alerts.push(`<div class="alert-item info"><div class="alert-head">ℹ GEOGRAPHIC SPREAD</div><div class="alert-body">Attacks originating from ${stats.unique_countries} different countries.</div></div>`);
+    }
+    if (!alerts.length) {
+      alerts.push(`<div class="alert-item info"><div class="alert-head">ℹ SYSTEM MONITORING</div><div class="alert-body">Honeypot network active. Waiting for threat data.</div></div>`);
+    }
+    $('alertsContainer').innerHTML = alerts.join('');
+  } catch (_) {}
+}
+
+// ── STATISTICS OVERLAY ──
+let statsOpen = false;
+
+function toggleStats() {
+  statsOpen = !statsOpen;
+  $('statsOverlay').classList.toggle('open', statsOpen);
+  if (statsOpen) loadStatsPanel();
+}
+
+function loadStatsPanel() {
+  const $s = id => document.querySelector('#stats' + id);
+  Promise.all([
+    fetch(`${API}/dashboard/stats`).then(r => r.json()),
+    fetch(`${API}/dashboard/top-users`).then(r => r.json()),
+    fetch(`${API}/dashboard/country-stats`).then(r => r.json()),
+    fetch(`${API}/dashboard/top-ips`).then(r => r.json()),
+    fetch(`${API}/dashboard/top-commands`).then(r => r.json()),
+    fetch(`${API}/dashboard/event-types`).then(r => r.json()),
+  ]).then(([stats, users, countries, ips, commands, events]) => {
+    const maxTotal = Math.max(...(countries.login_attacks || []).map((v,i) => v + (countries.command_attacks[i] || 0)), 1);
+    const maxUser = Math.max(...(users.data || []), 1);
+    const maxIp = Math.max(...(ips.data || []), 1);
+    const maxCmd = Math.max(...(commands.data || []), 1);
+    const total = (stats.total_events || 0);
+
+    $('statsSummary').innerHTML = `
+      <div class="stats-summary-item"><span class="stats-summary-label">TOTAL EVENTS</span><span class="stats-summary-value red">${total.toLocaleString()}</span></div>
+      <div class="stats-summary-item"><span class="stats-summary-label">UNIQUE IPs</span><span class="stats-summary-value">${(stats.unique_ips || 0).toLocaleString()}</span></div>
+      <div class="stats-summary-item"><span class="stats-summary-label">COUNTRIES</span><span class="stats-summary-value orange">${(stats.unique_countries || 0).toLocaleString()}</span></div>
+      <div class="stats-summary-item"><span class="stats-summary-label">LOGINS</span><span class="stats-summary-value">${(stats.login_attempts || 0).toLocaleString()}</span></div>
+      <div class="stats-summary-item"><span class="stats-summary-label">COMMANDS</span><span class="stats-summary-value green">${(stats.commands_executed || 0).toLocaleString()}</span></div>
+      <div class="stats-summary-item"><span class="stats-summary-label">SESSIONS</span><span class="stats-summary-value">${(stats.active_sessions || 0).toLocaleString()}</span></div>
+    `;
+
+    $s('Users').innerHTML = (users.labels && users.labels.length) ? `<table class="stats-table"><thead><tr><th></th><th>USERNAME</th><th>COUNT</th><th></th></tr></thead><tbody>${
+      users.labels.slice(0, 15).map((u, i) => `<tr><td class="stats-rank">#${i+1}</td><td class="stats-username">${u === '-' ? '<span style="color:var(--text-dim)">unknown</span>' : u}</td><td class="stats-count">${users.data[i]}</td><td class="stats-bar-td"><div class="stats-bar"><div class="stats-bar-fill" style="width:${(users.data[i]/maxUser*100).toFixed(0)}%"></div></div></td></tr>`).join('')
+    }</tbody></table>` : '<div class="empty-state">No user data</div>';
+
+    $s('Countries').innerHTML = (countries.countries && countries.countries.length) ? `<table class="stats-table"><thead><tr><th></th><th>COUNTRY</th><th>LOGINS</th><th>COMMANDS</th><th>TOTAL</th><th></th></tr></thead><tbody>${
+      countries.countries.map((c, i) => {
+        const log = countries.login_attacks[i] || 0;
+        const cmd = countries.command_attacks[i] || 0;
+        const tot = log + cmd;
+        return `<tr><td class="stats-flag">${flagEmoji(countries.country_codes[i])}</td><td>${c}</td><td class="stats-count">${log}</td><td class="stats-count">${cmd}</td><td class="stats-count red">${tot}</td><td class="stats-bar-td"><div class="stats-bar"><div class="stats-bar-fill" style="width:${(tot/maxTotal*100).toFixed(0)}%"></div></div></td></tr>`;
+      }).join('')
+    }</tbody></table>` : '<div class="empty-state">No country data</div>';
+
+    $s('IPs').innerHTML = (ips.labels && ips.labels.length) ? `<table class="stats-table"><thead><tr><th></th><th>IP ADDRESS</th><th>EVENTS</th><th></th></tr></thead><tbody>${
+      ips.labels.map((ip, i) => `<tr><td class="stats-rank">#${i+1}</td><td class="stats-ip">${ip}</td><td class="stats-count">${ips.data[i]}</td><td class="stats-bar-td"><div class="stats-bar"><div class="stats-bar-fill" style="width:${(ips.data[i]/maxIp*100).toFixed(0)}%;background:linear-gradient(90deg,var(--orange),var(--red))"></div></div></td></tr>`).join('')
+    }</tbody></table>` : '<div class="empty-state">No IP data</div>';
+
+    $s('Commands').innerHTML = (commands.labels && commands.labels.length) ? `<table class="stats-table"><thead><tr><th></th><th>COMMAND</th><th>COUNT</th><th></th></tr></thead><tbody>${
+      commands.labels.map((cmd, i) => `<tr><td class="stats-rank">#${i+1}</td><td class="stats-cmd">${cmd.length > 35 ? cmd.substring(0, 35) + '…' : cmd}</td><td class="stats-count">${commands.data[i]}</td><td class="stats-bar-td"><div class="stats-bar"><div class="stats-bar-fill" style="width:${(commands.data[i]/maxCmd*100).toFixed(0)}%;background:linear-gradient(90deg,var(--yellow),var(--orange))"></div></div></td></tr>`).join('')
+    }</tbody></table>` : '<div class="empty-state">No command data</div>';
+
+    $s('Events').innerHTML = (events.labels && events.labels.length) ? `<table class="stats-table"><thead><tr><th>TYPE</th><th>COUNT</th><th>PERCENTAGE</th><th></th></tr></thead><tbody>${
+      events.labels.map((l, i) => {
+        const pct = ((events.data[i] / Math.max(total, 1)) * 100).toFixed(1);
+        return `<tr><td style="text-transform:uppercase;font-weight:600;color:${l === 'login' ? 'var(--red)' : 'var(--cyan)'}">${l}</td><td class="stats-count">${events.data[i]}</td><td style="color:var(--text-dim)">${pct}%</td><td class="stats-bar-td"><div class="stats-bar"><div class="stats-bar-fill" style="width:${pct}%;background:${l === 'login' ? 'linear-gradient(90deg,var(--red),var(--orange))' : 'linear-gradient(90deg,var(--cyan),#0066ff)'}"></div></div></td></tr>`;
+      }).join('')
+    }</tbody></table>` : '<div class="empty-state">No event type data</div>';
+  }).catch(() => {
+    document.querySelectorAll('#statsGrid .empty-state').forEach(el => el.textContent = 'Failed to load');
+  });
+}
+
+// ── INIT ──
+function init() {
+  initGlobe();
+  loadAllStats();
+  loadAlerts();
+  loadTicker();
+  loadAttackMeter();
+  loadServiceStatus();
+  setInterval(loadAlerts, 8000);
+  setInterval(loadTicker, 10000);
+  setInterval(loadAttackMeter, 3000);
+  setInterval(loadServiceStatus, 5000);
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+<div class="stats-overlay" id="statsOverlay">
+  <div class="stats-panel">
+    <button class="stats-close" onclick="toggleStats()">✕</button>
+    <div class="stats-title">// STATISTICS &nbsp;OVERVIEW</div>
+    <div class="stats-summary-row" id="statsSummary"></div>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stats-section"><div class="stats-section-title">TOP USERS</div><div id="statsUsers"><div class="empty-state">Loading...</div></div></div>
+      <div class="stats-section"><div class="stats-section-title">TOP COUNTRIES</div><div id="statsCountries"><div class="empty-state">Loading...</div></div></div>
+      <div class="stats-section"><div class="stats-section-title">TOP IPs</div><div id="statsIPs"><div class="empty-state">Loading...</div></div></div>
+      <div class="stats-section"><div class="stats-section-title">TOP COMMANDS</div><div id="statsCommands"><div class="empty-state">Loading...</div></div></div>
+      <div class="stats-section-full"><div class="stats-section-title">EVENT DISTRIBUTION</div><div id="statsEvents"><div class="empty-state">Loading...</div></div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

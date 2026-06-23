@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Globe</title>
+
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        overflow: hidden;
+        background: #000;
+    }
+
+    #globe-container {
+        width: 100vw;
+        height: 100vh;
+    }
+</style>
+</head>
+<body>
+
+<div id="globe-container"></div>
+
+<script>
+const globe = new Globe(document.getElementById('globe-container'))
+    .globeImageUrl(
+        'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg'
+    )
+    .bumpImageUrl(
+        'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png'
+    )
+    .backgroundImageUrl(
+        'https://unpkg.com/three-globe/example/img/night-sky.png'
+    )
+    .showAtmosphere(false)
+    .showGraticules(false)
+    .width(window.innerWidth)
+    .height(window.innerHeight);
+
+// Initial camera position
+globe.pointOfView({
+    lat: 20,
+    lng: -45,
+    altitude: 2.8
+});
+
+// Smooth rotation
+function rotateGlobe() {
+    const pov = globe.pointOfView();
+
+    globe.pointOfView(
+        {
+            lat: pov.lat,
+            lng: pov.lng + 0.05,
+            altitude: pov.altitude
+        },
+        0
+    );
+
+    requestAnimationFrame(rotateGlobe);
+}
+
+rotateGlobe();
+
+// Resize support
+window.addEventListener('resize', () => {
+    globe
+        .width(window.innerWidth)
+        .height(window.innerHeight);
+});
+</script>
+
+</body>
+</html>
